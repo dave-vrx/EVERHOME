@@ -1,0 +1,2 @@
+"use client";
+export function ArcadeGame({onExit,username}:{onExit:()=>void;username:string}){return <main className="arcadeGame"><button className="arcadeExit" onClick={onExit}>← EVERHOME</button><iframe title="EVERHOME Fruit Drop" src="everhome-suika/index.html" onLoad={e=>{try{const input=e.currentTarget.contentDocument?.getElementById("nameInput") as HTMLInputElement|null;if(input&&!input.value)input.value=username}catch{}}}/></main>}

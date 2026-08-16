@@ -2,6 +2,7 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from "react";
 import {SocialCenter} from "./social";
 import {EverhomeWorldEngine} from "./world-engine";
+import {ArcadeGame} from "./arcade-game";
 
 type World={id:string;name:string;icon:string;theme:string;players:number;kind:string;description:string};
 type Avatar={skin:string;hair:string;top:string;bottom:string;face:string;hat:string;model?:"feminine"|"masculine"|"robot";hairStyle?:string;accessory?:string;back?:string;effect?:string;topItem?:string};
@@ -13,6 +14,7 @@ const worlds:World[]=[
  {id:"sky",name:"Cloud Academy",icon:"☁️",theme:"sky",players:64,kind:"Learn",description:"Learn to build while hopping between floating islands."},
  {id:"cafe",name:"Mochi Café",icon:"☕",theme:"cafe",players:37,kind:"Roleplay",description:"Serve treats, decorate tables, and host a cozy party."},
  {id:"arcade",name:"Pixel Palace",icon:"🕹️",theme:"arcade",players:118,kind:"Games",description:"Classic minigames, high scores, and weekly tournaments."},
+ {id:"suika",name:"Fruit Drop Test",icon:"🍉",theme:"arcade",players:42,kind:"Games",description:"Drop, merge, and climb the full EVERHOME Arcade leaderboard."},
 ];
 const friends=[{name:"Mira",world:"Campfire Commons",face:"👩🏽",online:true},{name:"Kairo",world:"Neon District",face:"🧑🏻",online:true},{name:"Orbit",world:"Building",face:"👨🏾",online:true},{name:"Pip",world:"Offline",face:"👩🏻",online:false}];
 const events=[{day:"18",month:"AUG",name:"Campfire Story Night",time:"7:00 PM",world:"Campfire Commons",going:342,icon:"🔥"},{day:"20",month:"AUG",name:"Creator Build Jam",time:"6:30 PM",world:"Cloud Academy",going:186,icon:"⚒️"},{day:"23",month:"AUG",name:"Neon Rooftop Party",time:"8:00 PM",world:"Neon District",going:521,icon:"🎵"}];
@@ -62,6 +64,7 @@ export default function EverhomeApp(){
  function redeem(e:React.FormEvent){e.preventDefault();const c=code.trim().toUpperCase();if(c==="WELCOMEHOME"){if(!owned.includes("crown")){setOwned(o=>[...o,"crown"]);setCoins(n=>n+250);notify("Unlocked Founder's Crown + 250 coins!")}else notify("Code already redeemed")}else if(c==="CAMPFIRE"){if(!owned.includes("beanie")){setOwned(o=>[...o,"beanie"]);notify("Campfire Beanie unlocked!")}else notify("Code already redeemed")}else notify("That code wasn’t found");setCode("")}
  if(!ready)return <div className="loading">EVERHOME</div>;
  if(!username)return <main className="welcome"><div className="welcomeArt"><b className="welcomeLogo">E</b><div className="welcomeWorld">🔥</div><AvatarFigure avatar={avatar}/><div className="welcomeBubble">A new world starts with a name.</div></div><section><small>WELCOME TO EVERHOME</small><h1>Who will you be?</h1><p>Choose a username to start exploring. No password, no fuss—you can change it later.</p><form onSubmit={createProfile}><label>YOUR USERNAME</label><input autoFocus value={draftName} onChange={e=>setDraftName(e.target.value)} placeholder="e.g. StarGazer" maxLength={18}/><span>{draftName.length}/18 · letters, numbers, spaces and _</span><button className="primary">Create my explorer →</button></form><footer>By continuing, you agree to be kind and keep EVERHOME welcoming.</footer></section>{toast&&<div className="toast">{toast}</div>}</main>;
+ if(playing?.id==="suika")return <ArcadeGame username={username} onExit={()=>setPlaying(null)}/>;
  if(playing)return <EverhomeWorldEngine world={playing} username={username} avatar={avatar} onExit={()=>setPlaying(null)} onVisit={visit} onChat={()=>setChatCount(c=>c+1)}/>;
  return <main className="app"><aside className="sidebar"><button className="brand" onClick={()=>setActive("Home")}><b>E</b><strong>EVERHOME</strong></button><nav>{nav.map(([i,n])=><button key={n} className={active===n?"active":""} onClick={()=>setActive(n)}><i>{i}</i>{n}{n==="Events"&&<em>3</em>}</button>)}</nav><div className="sidebarFoot"><button onClick={()=>setActive("Codes")}>⌁ Redeem code</button></div></aside>
   <section className="content"><header><button className="mobileLogo" onClick={()=>setActive("Home")}>E</button><label className="search">⌕<input value={search} onChange={e=>setSearch(e.target.value)} onFocus={()=>setActive("Worlds")} placeholder="Search EVERHOME..."/></label><div className="headerTools"><button className="coins" onClick={()=>setActive("Shop")}>◇ <b>{coins.toLocaleString()}</b></button><button className="fishHeaderChip" onClick={()=>setActive("Messages")} title="World chat">💬<i className="fishUnread">2</i><i className="fishOnline">1</i></button><button className="fishHeaderChip" onClick={()=>setActive("Messages")} title="Friends and private messages">👥<i className="fishUnread">3</i></button><button className="profile" onClick={()=>setActive("Avatar")}><AvatarFigure avatar={avatar} small/></button></div></header>
