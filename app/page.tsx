@@ -610,6 +610,8 @@ export default function EverhomeApp() {
     [chatCount, setChatCount] = useState(0),
     [friendCount, setFriendCount] = useState(0),
     [built, setBuilt] = useState(0),
+    [favoriteWorlds, setFavoriteWorlds] = useState<string[]>([]),
+    [lastWorld, setLastWorld] = useState<string>(""),
     [rsvps, setRsvps] = useState<number[]>([]),
     [toast, setToast] = useState(""),
     [code, setCode] = useState(""),
@@ -631,6 +633,8 @@ export default function EverhomeApp() {
         setVisits(p.visits || []);
         setChatCount(p.chatCount || 0);
         setBuilt(p.built || 0);
+        setFavoriteWorlds(p.favoriteWorlds || []);
+        setLastWorld(p.lastWorld || "");
       } catch {}
     }
     setReady(true);
@@ -647,9 +651,11 @@ export default function EverhomeApp() {
         visits,
         chatCount,
         built,
+        favoriteWorlds,
+        lastWorld,
       }),
     );
-  }, [ready, username, coins, avatar, owned, visits, chatCount, built]);
+  }, [ready, username, coins, avatar, owned, visits, chatCount, built, favoriteWorlds, lastWorld]);
   useEffect(()=>{if(!ready||!username)return;const timer=setInterval(()=>{setCoins(c=>c+2);setSessionEarned(n=>n+2)},30000);return()=>clearInterval(timer)},[ready,username]);
   function notify(t: string) {
     setToast(t);
@@ -672,6 +678,15 @@ export default function EverhomeApp() {
     (id: string) => setVisits((v) => (v.includes(id) ? v : [...v, id])),
     [],
   );
+  const enterWorld = useCallback((world: World) => {
+    setLastWorld(world.id);
+    setPlaying(world);
+  }, []);
+  const toggleFavorite = useCallback((id: string) => {
+    setFavoriteWorlds((current) =>
+      current.includes(id) ? current.filter((worldId) => worldId !== id) : [...current, id],
+    );
+  }, []);
   const progress = [
     visits.includes("campfire") ? 1 : 0,
     chatCount,
@@ -853,22 +868,26 @@ export default function EverhomeApp() {
             <Home
               username={username}
               worlds={worlds}
-              setPlaying={setPlaying}
+              setPlaying={enterWorld}
               setActive={setActive}
               events={events}
               avatar={avatar}
               coins={coins}
               reward={(amount)=>{setCoins(c=>c+amount);notify(`Daily reward: +${amount} Homecoins!`)}}
+              visits={visits}
+              chatCount={chatCount}
+              built={built}
+              lastWorld={lastWorld}
             />
           )}{" "}
           {active === "Worlds" && (
-            <WorldBrowser2 worlds={filtered} setPlaying={setPlaying} />
+            <WorldBrowser2 worlds={filtered} setPlaying={enterWorld} favorites={favoriteWorlds} toggleFavorite={toggleFavorite} />
           )}{" "}
           {active === "Events" && <Events rsvps={rsvps} setRsvps={setRsvps} />}{" "}
           {active === "Friends" && (
             <Friends
               onJoin={(w) =>
-                setPlaying(worlds.find((x) => x.name === w) || worlds[0])
+                enterWorld(worlds.find((x) => x.name === w) || worlds[0])
               }
               friendCount={friendCount}
               add={() => {
@@ -993,6 +1012,10 @@ function Home({
   avatar,
   coins,
   reward,
+  visits,
+  chatCount,
+  built,
+  lastWorld,
 }: {
   username: string;
   worlds: World[];
@@ -1002,9 +1025,17 @@ function Home({
   avatar: Avatar;
   coins: number;
   reward:(amount:number)=>void;
+  visits:string[];
+  chatCount:number;
+  built:number;
+  lastWorld:string;
 }) {
   const today=new Date().toISOString().slice(0,10),[claimed,setClaimed]=useState(()=>typeof window!=="undefined"&&localStorage.getItem("everhome-daily")==today);
-  const claim=()=>{if(claimed)return;localStorage.setItem("everhome-daily",today);setClaimed(true);reward(75)};
+  const [streak,setStreak]=useState(()=>{if(typeof window==="undefined")return 1;try{return JSON.parse(localStorage.getItem("everhome-streak")||"{}").count||1}catch{return 1}});
+  const claim=()=>{if(claimed)return;let next=1;try{const saved=JSON.parse(localStorage.getItem("everhome-streak")||"{}");const yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);next=saved.date===yesterday?(saved.count||0)+1:saved.date===today?(saved.count||1):1}catch{};localStorage.setItem("everhome-daily",today);localStorage.setItem("everhome-streak",JSON.stringify({date:today,count:next}));setStreak(next);setClaimed(true);reward(Math.min(200,50+next*25))};
+  const recent=worlds.find((world)=>world.id===lastWorld);
+  const quests=[["Visit a social world",visits.includes("campfire")],["Explore two different worlds",visits.length>=2],["Send a friendly message",chatCount>0],["Save something in Builder",built>0]] as const;
+  const questDone=quests.filter(([,done])=>done).length;
   return (
     <>
       <section className="v2Welcome"><div className="v2Greeting"><div className="v2Avatar"><AvatarFigure avatar={avatar}/></div><div><small>WELCOME BACK</small><h1>{username}</h1><p>Your worlds, friends and companion missed you.</p></div></div><div className="v2Wallet"><span>HOMECOINS</span><b>◇ {coins.toLocaleString()}</b><button onClick={()=>setActive("Shop")}>Visit shop</button></div></section>
@@ -1029,7 +1060,8 @@ function Home({
         </div>
       </section>
       <nav className="quickDock" aria-label="Quick actions">{[["🌍","Explore","Worlds"],["🐾","Companion","Pets"],["✦","New look","Avatar"],["⚒️","Create","Create"],["💬","Messages","Messages"],["🎉","Events","Events"]].map(([icon,label,page])=><button key={page} onClick={()=>setActive(page)}><i>{icon}</i><span>{label}</span></button>)}</nav>
-      <section className="todayGrid"><article className="dailyCard"><div><small>DAILY WELCOME · DAY 1</small><h2>A little something for coming home</h2><p>Return each day to grow your streak and unlock companion treats, furniture and special colours.</p></div><button disabled={claimed} onClick={claim}>{claimed?"✓ Collected":"◇ 75 · Collect"}</button></article><article className="questCard"><header><small>TODAY&apos;S PATH</small><b>2 / 4 complete</b></header>{[["Visit a social world",true],["Care for your companion",true],["Send a friendly message",false],["Add something in Builder",false]].map(([q,done])=><p className={done?"done":""} key={String(q)}><i>{done?"✓":"○"}</i><span>{q}</span></p>)}<button onClick={()=>setActive("Badges")}>See all progress →</button></article></section>
+      {recent&&<section className="continueJourney"><div><small>CONTINUE YOUR JOURNEY</small><h2>{recent.icon} {recent.name}</h2><p>Pick up where you left off, or discover somewhere completely new.</p></div><button onClick={()=>setPlaying(recent)}>Continue playing →</button></section>}
+      <section className="todayGrid"><article className="dailyCard"><div><small>DAILY WELCOME · {streak} DAY STREAK</small><h2>A little something for coming home</h2><p>Keep returning to grow your reward. Your next welcome can be worth up to 200 Homecoins.</p></div><button disabled={claimed} onClick={claim}>{claimed?"✓ Collected":`◇ ${Math.min(200,50+streak*25)} · Collect`}</button></article><article className="questCard"><header><small>TODAY&apos;S PATH</small><b>{questDone} / {quests.length} complete</b></header>{quests.map(([q,done])=><p className={done?"done":""} key={q}><i>{done?"✓":"○"}</i><span>{q}</span></p>)}<button onClick={()=>setActive("Badges")}>See all progress →</button></article></section>
       <section className="sectionHead">
         <div>
           <small>JUMP IN</small>
@@ -1074,16 +1106,21 @@ function WorldCard({
   w,
   play,
   featured = false,
+  favorite,
+  onFavorite,
 }: {
   w: World;
   play: () => void;
   featured?: boolean;
+  favorite?: boolean;
+  onFavorite?:()=>void;
 }) {
   return (
     <article className="worldCard" onClick={play}>
       <div className={`worldThumb ${w.theme}`}>
         <span>{w.icon}</span>
         <button>▶</button>
+        {onFavorite&&<button className={`worldFavorite ${favorite?"saved":""}`} aria-label={favorite?`Remove ${w.name} from favorites`:`Save ${w.name} to favorites`} onClick={(event)=>{event.stopPropagation();onFavorite()}}>{favorite?"★":"☆"}</button>}
         <i>{w.kind}</i>
         {featured && <em>LOBBY</em>}
       </div>
@@ -1804,15 +1841,21 @@ function AvatarStudio({
 function WorldBrowser2({
   worlds,
   setPlaying,
+  favorites,
+  toggleFavorite,
 }: {
   worlds: World[];
   setPlaying: (w: World) => void;
+  favorites:string[];
+  toggleFavorite:(id:string)=>void;
 }) {
   const [filter, setFilter] = useState("All");
-  const groups = ["All", "Social", "Games", "Roleplay", "Learn", "Fishing"];
+  const groups = ["All", "Favorites", "Social", "Games", "Roleplay", "Learn", "Fishing"];
   const shown =
     filter === "All"
       ? worlds
+      : filter === "Favorites"
+        ? worlds.filter((w)=>favorites.includes(w.id))
       : worlds.filter(
           (w) =>
             w.kind === filter ||
@@ -1839,7 +1882,7 @@ function WorldBrowser2({
       {shown.length ? (
         <div className="worldGrid big">
           {shown.map((w) => (
-            <WorldCard key={w.id} w={w} play={() => setPlaying(w)} />
+            <WorldCard key={w.id} w={w} play={() => setPlaying(w)} favorite={favorites.includes(w.id)} onFavorite={()=>toggleFavorite(w.id)} />
           ))}
         </div>
       ) : (
