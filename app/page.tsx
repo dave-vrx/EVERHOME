@@ -184,6 +184,7 @@ const nav = [
   ["◎", "Worlds"],
   ["◌", "Events"],
   ["♙", "Friends"],
+  ["◈", "Community"],
   ["💬", "Messages"],
   ["✦", "Avatar"],
   ["🐾", "Pets"],
@@ -612,6 +613,8 @@ export default function EverhomeApp() {
     [built, setBuilt] = useState(0),
     [favoriteWorlds, setFavoriteWorlds] = useState<string[]>([]),
     [lastWorld, setLastWorld] = useState<string>(""),
+    [joinedClubs, setJoinedClubs] = useState<string[]>([]),
+    [partyOpen, setPartyOpen] = useState(false),
     [rsvps, setRsvps] = useState<number[]>([]),
     [toast, setToast] = useState(""),
     [code, setCode] = useState(""),
@@ -635,6 +638,8 @@ export default function EverhomeApp() {
         setBuilt(p.built || 0);
         setFavoriteWorlds(p.favoriteWorlds || []);
         setLastWorld(p.lastWorld || "");
+        setJoinedClubs(p.joinedClubs || []);
+        setPartyOpen(Boolean(p.partyOpen));
       } catch {}
     }
     setReady(true);
@@ -653,9 +658,11 @@ export default function EverhomeApp() {
         built,
         favoriteWorlds,
         lastWorld,
+        joinedClubs,
+        partyOpen,
       }),
     );
-  }, [ready, username, coins, avatar, owned, visits, chatCount, built, favoriteWorlds, lastWorld]);
+  }, [ready, username, coins, avatar, owned, visits, chatCount, built, favoriteWorlds, lastWorld, joinedClubs, partyOpen]);
   useEffect(()=>{if(!ready||!username)return;const timer=setInterval(()=>{setCoins(c=>c+2);setSessionEarned(n=>n+2)},30000);return()=>clearInterval(timer)},[ready,username]);
   function notify(t: string) {
     setToast(t);
@@ -896,6 +903,7 @@ export default function EverhomeApp() {
               }}
             />
           )}{" "}
+          {active === "Community" && <CommunityHub username={username} avatar={avatar} visits={visits} owned={owned} built={built} chatCount={chatCount} joinedClubs={joinedClubs} setJoinedClubs={setJoinedClubs} partyOpen={partyOpen} setPartyOpen={setPartyOpen} enterWorld={enterWorld} notify={notify}/>} {" "}
           {active === "Messages" && (
             <SocialCenter
               username={username}
@@ -978,6 +986,7 @@ export default function EverhomeApp() {
           {[
             ["◌", "Events"],
             ["♙", "Friends"],
+            ["◈", "Community"],
             ["🐾", "Pets"],
             ["⚒", "Create"],
             ["◇", "Shop"],
@@ -1893,4 +1902,25 @@ function WorldBrowser2({
       )}
     </>
   );
+}
+
+function CommunityHub({username,avatar,visits,owned,built,chatCount,joinedClubs,setJoinedClubs,partyOpen,setPartyOpen,enterWorld,notify}:{username:string;avatar:Avatar;visits:string[];owned:string[];built:number;chatCount:number;joinedClubs:string[];setJoinedClubs:(v:string[])=>void;partyOpen:boolean;setPartyOpen:(v:boolean)=>void;enterWorld:(w:World)=>void;notify:(s:string)=>void}){
+  const clubs=[
+    {id:"campers",icon:"🔥",name:"Campfire Club",members:"12.8K",text:"Stories, cozy builds and nightly meetups.",world:"campfire"},
+    {id:"makers",icon:"⚒️",name:"World Makers",members:"8.4K",text:"Build jams, scripting help and creator showcases.",world:"sky"},
+    {id:"arcade",icon:"🕹️",name:"High Score Society",members:"6.1K",text:"Tournaments, challenges and arcade records.",world:"arcade"},
+    {id:"anglers",icon:"🎣",name:"Lake Legends",members:"9.7K",text:"Rare catches, boat trips and fishing friends.",world:"lake"},
+  ];
+  const xp=visits.length*120+owned.length*75+chatCount*15+built*250;
+  const level=Math.max(1,Math.floor(xp/500)+1),levelXp=xp%500;
+  const partyCode=`HOME-${username.replace(/[^a-z0-9]/gi,"").slice(0,5).toUpperCase()||"PARTY"}`;
+  const toggleClub=(id:string)=>{const joined=joinedClubs.includes(id);setJoinedClubs(joined?joinedClubs.filter(x=>x!==id):[...joinedClubs,id]);notify(joined?"Left club":"Club joined — welcome in!")};
+  return <div className="communityHub">
+    <PageTitle over="COMMUNITY" title="Your people, parties and clubs" text="Team up before you play, find your crowd, and grow your EVERHOME reputation."/>
+    <section className="playerPassport"><div className="passportAvatar"><AvatarFigure avatar={avatar}/></div><div><small>PLAYER PASSPORT</small><h2>{username}</h2><p>Explorer · Creator · Good neighbour</p><div className="levelTrack"><i style={{width:`${levelXp/5}%`}}/><span>Level {level} · {levelXp} / 500 XP</span></div></div><aside><b>{visits.length}</b><span>Worlds</span><b>{owned.length}</b><span>Items</span><b>{joinedClubs.length}</b><span>Clubs</span></aside></section>
+    <section className="partyCard"><div><small>PLAY TOGETHER</small><h2>{partyOpen?"Your party is ready":"Start an EVERHOME Party"}</h2><p>{partyOpen?`Share ${partyCode} with friends, then choose a world for everyone.`:"Create a lightweight party and bring your group from world to world."}</p></div><div>{partyOpen&&<button className="partyCode" onClick={()=>{navigator.clipboard?.writeText(partyCode);notify("Party code copied!")}}>{partyCode} ⧉</button>}<button className="primary" onClick={()=>{setPartyOpen(!partyOpen);notify(partyOpen?"Party closed":"Party created!")}}>{partyOpen?"Close party":"＋ Create party"}</button></div></section>
+    <div className="communityTitle"><div><small>FIND YOUR CROWD</small><h2>Popular clubs</h2></div><span>{joinedClubs.length} joined</span></div>
+    <section className="clubGrid">{clubs.map(club=><article key={club.id}><i>{club.icon}</i><div><small>{club.members} MEMBERS</small><h3>{club.name}</h3><p>{club.text}</p></div><footer><button onClick={()=>toggleClub(club.id)} className={joinedClubs.includes(club.id)?"joined":""}>{joinedClubs.includes(club.id)?"✓ Joined":"Join club"}</button><button onClick={()=>enterWorld(worlds.find(w=>w.id===club.world)||worlds[0])}>Visit world →</button></footer></article>)}</section>
+    <section className="communityBottom"><article><small>ACTIVITY</small><h3>Your EVERHOME story</h3>{visits.length?<p>🧭 Explored {visits.length} world{visits.length===1?"":"s"}</p>:<p>○ Your first adventure is waiting</p>}{owned.length?<p>🎒 Collected {owned.length} avatar item{owned.length===1?"":"s"}</p>:<p>○ Find your first collectible</p>}{built?<p>⚒️ Saved a creator world</p>:<p>○ Open Builder and make something</p>}</article><article><small>CREATOR SPOTLIGHT</small><h3>Build something people remember</h3><p>Mix social spaces, games, secrets, rewards and visual logic—then invite a party to playtest it.</p><button onClick={()=>notify("Creator challenge pinned!")}>Pin weekly challenge</button></article></section>
+  </div>
 }
