@@ -1878,6 +1878,7 @@ function WorldBrowser2({
   toggleFavorite:(id:string)=>void;
 }) {
   const [filter, setFilter] = useState("All");
+  const [selectedId,setSelectedId]=useState(worlds[0]?.id||"campfire");
   const groups = ["All", "Favorites", "Social", "Games", "Roleplay", "Learn", "Fishing"];
   const shown =
     filter === "All"
@@ -1889,6 +1890,10 @@ function WorldBrowser2({
             w.kind === filter ||
             (filter === "Games" && ["Adventure", "Games"].includes(w.kind)),
         );
+  const selected=worlds.find(w=>w.id===selectedId)||worlds[0];
+  const mapPoints:Record<string,[number,number]>={campfire:[17,35],lake:[34,48],coast:[52,30],neon:[82,27],sky:[31,77],cafe:[68,72],arcade:[88,72],suika:[78,86]};
+  const randomTravel=()=>{const pick=worlds[Math.floor(Math.random()*worlds.length)];if(pick)setPlaying(pick)};
+  const campfireTravel=()=>{const pick=worlds.find(w=>w.id==="campfire")||worlds[0];if(pick){setSelectedId(pick.id);setPlaying(pick)}};
   return (
     <>
       <PageTitle
@@ -1896,6 +1901,18 @@ function WorldBrowser2({
         title="Find your next world"
         text="Every card opens a playable EVERHOME world."
       />
+      <section className="worldAtlas">
+        <div className="atlasMap">
+          <header><span>EVERHOME WORLD MAP</span><b>● LIVE DESTINATIONS</b></header>
+          {worlds.map(w=>{const point=mapPoints[w.id]||[50,50];return <button key={w.id} className={`atlasPin ${selected?.id===w.id?"selected":""}`} style={{left:`${point[0]}%`,top:`${point[1]}%`}} onClick={()=>setSelectedId(w.id)} aria-label={`Select ${w.name}`}><i>{w.icon}</i><span>{w.name}</span><em>{w.players} playing</em></button>})}
+          <div className="atlasRoute"><i/><i/><i/></div>
+        </div>
+        <aside className="atlasPanel">
+          {selected&&<><small>SELECTED DESTINATION</small><div className={`atlasPoster ${selected.theme}`}><i>{selected.icon}</i><span>{selected.kind}</span></div><h2>{selected.name}</h2><p>{selected.description}</p><div className="atlasStats"><span><b>{selected.players}</b> playing</span><span><b>Live</b> multiplayer</span><span><b>{favorites.includes(selected.id)?"Saved":"New"}</b> for you</span></div><button className="primary" onClick={()=>setPlaying(selected)}>▶ Quick travel</button><button className="atlasSave" onClick={()=>toggleFavorite(selected.id)}>{favorites.includes(selected.id)?"★ Remove favourite":"☆ Save destination"}</button></>}
+        </aside>
+      </section>
+      <section className="atlasActions"><button onClick={randomTravel}><i>🎲</i><span><b>Surprise me</b><small>Jump into a random world</small></span></button><button onClick={()=>setFilter("Favorites")}><i>★</i><span><b>My saved route</b><small>{favorites.length} favourite destinations</small></span></button><button onClick={()=>{setFilter("Games");document.querySelector('.worldGrid')?.scrollIntoView({behavior:'smooth'})}}><i>🏆</i><span><b>Game trail</b><small>Arcade and challenges</small></span></button><button onClick={campfireTravel}><i>🔥</i><span><b>Social tonight</b><small>Meet at Campfire Commons</small></span></button></section>
+      <div className="worldBrowserHeading"><div><small>DESTINATION DIRECTORY</small><h2>Browse every world</h2></div><span>{shown.length} showing · {favorites.length} saved</span></div>
       <div className="filterPills">
         {groups.map((g) => (
           <button
