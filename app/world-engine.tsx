@@ -752,7 +752,7 @@ export function EverhomeWorldEngine({
         ctx.beginPath();
         if(avatar.bottomStyle==="skirt"){ctx.moveTo(-15,-20);ctx.lineTo(15,-20);ctx.lineTo(20,4);ctx.lineTo(-20,4);ctx.closePath()}else if(avatar.bottomStyle==="shorts"){ctx.roundRect(-13,-20,10,16,4);ctx.roundRect(3,-20,10,16,4)}else{const wide=avatar.bottomStyle==="wide"?12:9;ctx.roundRect(-wide-3,-20,wide,25,5);ctx.roundRect(3,-20,wide,25,5)}
         ctx.fill();
-        ctx.fillStyle = avatar.top;
+        ctx.fillStyle = avatar.topItem === "witch_outfit" ? "#17111f" : avatar.top;
         ctx.beginPath();
         ctx.roundRect(-17, -48, 34, 33, avatar.topStyle==="jacket"?5:avatar.topStyle==="hoodie"?15:10);
         ctx.fill();
@@ -774,6 +774,19 @@ export function EverhomeWorldEngine({
         ctx.lineTo(-15, -50);
         ctx.quadraticCurveTo(-19, -55, -19, -68);
         ctx.fill();
+        if (avatar.hat === "witch_hat") {
+          ctx.fillStyle = avatar.hatColor || "#7d4bb5";
+          ctx.beginPath();
+          ctx.moveTo(-24, -78);
+          ctx.lineTo(3, -112);
+          ctx.lineTo(12, -82);
+          ctx.quadraticCurveTo(29, -78, 31, -72);
+          ctx.quadraticCurveTo(0, -66, -31, -72);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = "#ead39a";
+          ctx.fillRect(-18, -78, 37, 3);
+        }
         ctx.fillStyle = "#263241";
         ctx.beginPath();
         ctx.arc(-6, -64, 2.2, 0, TAU);

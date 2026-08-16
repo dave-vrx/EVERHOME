@@ -224,7 +224,7 @@ function AvatarFigure({
   const model = avatar.model || "feminine";
   return (
     <div
-      className={`avatarFigure rig-${model} hair-${avatar.hairStyle || "soft"} top-${avatar.topStyle || "tee"} bottom-${avatar.bottomStyle || "trousers"} shoes-${avatar.shoeStyle || "sneakers"} ${small ? "small" : ""}`}
+      className={`avatarFigure rig-${model} hair-${avatar.hairStyle || "soft"} top-${avatar.topStyle || "tee"} bottom-${avatar.bottomStyle || "trousers"} shoes-${avatar.shoeStyle || "sneakers"} outfit-${avatar.topItem || "none"} ${small ? "small" : ""}`}
     >
       <div
         className="avEffect"
@@ -713,6 +713,27 @@ export default function EverhomeApp() {
       if (!owned.includes("beanie")) {
         setOwned((o) => [...o, "beanie"]);
         notify("Campfire Beanie unlocked!");
+      } else notify("Code already redeemed");
+    } else if (c === "WITCHY") {
+      const witchItems = ["witch_hat", "witch_outfit"];
+      if (!witchItems.every((item) => owned.includes(item))) {
+        setOwned((current) => [...new Set([...current, ...witchItems])]);
+        setAvatar({
+          ...avatar,
+          model: "feminine",
+          hair: "#171218",
+          hairStyle: "long",
+          top: "#17131f",
+          bottom: "#211a2b",
+          hat: "witch_hat",
+          hatColor: "#7d4bb5",
+          topItem: "witch_outfit",
+          topStyle: "jacket",
+          bottomStyle: "wide",
+          shoeStyle: "boots",
+          shoeColor: "#100d16",
+        });
+        notify("Witchy Chick unlocked and equipped!");
       } else notify("Code already redeemed");
     } else notify("That code wasn’t found");
     setCode("");
@@ -1538,6 +1559,8 @@ function AvatarStudio({
   const inventory = [
     { id: "beanie", slot: "hat", label: "Campfire Beanie", icon: "🧢" },
     { id: "crown", slot: "hat", label: "Founder Crown", icon: "👑" },
+    { id: "witch_hat", slot: "hat", label: "Witchy Hat", icon: "🧙‍♀️" },
+    { id: "witch_outfit", slot: "topItem", label: "Ritual Outfit", icon: "🌙" },
     { id: "wings", slot: "back", label: "Cloud Wings", icon: "🪽" },
     { id: "hoodie", slot: "topItem", label: "Evergreen Hoodie", icon: "🥼" },
     { id: "spark", slot: "effect", label: "Pocket Spark", icon: "✨" },
