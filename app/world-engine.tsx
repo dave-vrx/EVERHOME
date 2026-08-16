@@ -33,6 +33,7 @@ type Avatar = {
   shoeColor?: string;
 };
 type SmoothedPresence = LivePresence & {displayX?:number;displayY?:number;displayHead?:number};
+type Companion = {kind:string;name:string;hunger?:number;happy?:number;energy?:number};
 type Catch = { name: string; icon: string; size: number; rare: string };
 type FishState = "idle" | "waiting" | "reeling" | "caught";
 type Hotspot = {
@@ -493,7 +494,9 @@ export function EverhomeWorldEngine({
     seenChat = useRef(new Set<string>()),
     chatChannel = useRef<BroadcastChannel | null>(null),
     presenceChannel = useRef<BroadcastChannel | null>(null),
-    remotePlayers = useRef<SmoothedPresence[]>([]);
+    remotePlayers = useRef<SmoothedPresence[]>([]),
+    companion = useRef<Companion>({kind:"fox",name:"Nova"}),
+    companionPos = useRef({x:610,y:650});
   const [chat, setChat] = useState(false),
     [message, setMessage] = useState(""),
     [bubble, setBubble] = useState(""),
@@ -523,8 +526,10 @@ export function EverhomeWorldEngine({
     onVisit(world.id);
   }, [onVisit, world.id]);
   useEffect(() => {
+    try { companion.current = JSON.parse(localStorage.getItem("everhome-pet") || "null") || companion.current; } catch {}
     const spawn = lake ? { x: 650, y: 620 } : { x: 2000, y: 1350 };
     actor.current = { ...spawn, head: 0, speed: 0, vx: 0, vy: 0 };
+    companionPos.current = {x:spawn.x-42,y:spawn.y+34};
     cam.current = { ...spawn };
     setNear(null);
     setActivity("");
@@ -614,6 +619,7 @@ export function EverhomeWorldEngine({
           head: a.head,
           color: "#32d8ff",
           avatar,
+          companion: companion.current,
           at: Date.now(),
         };
       presenceChannel.current?.postMessage(me);
@@ -828,6 +834,19 @@ export function EverhomeWorldEngine({
       }
       ctx.restore();
     };
+    const drawCompanion = (x:number,y:number,pet?:Companion) => {
+      if (!pet) return;
+      const icons:Record<string,string>={fox:"🦊",cat:"🐱",dog:"🐶",dragon:"🐲",robot:"🤖"};
+      ctx.save();
+      ctx.translate(x,y);
+      ctx.fillStyle="rgba(10,20,38,.2)";
+      ctx.beginPath();ctx.ellipse(0,5,16,6,0,0,TAU);ctx.fill();
+      ctx.font="30px system-ui";ctx.textAlign="center";ctx.textBaseline="bottom";
+      ctx.shadowColor="#10182a66";ctx.shadowBlur=7;ctx.fillText(icons[pet.kind]||"🦊",0,2);ctx.shadowBlur=0;
+      ctx.font="800 8px system-ui";ctx.fillStyle="#fff";ctx.strokeStyle="#17233f";ctx.lineWidth=3;
+      ctx.strokeText((pet.name||"Companion").slice(0,12),0,15);ctx.fillText((pet.name||"Companion").slice(0,12),0,15);
+      ctx.restore();
+    };
     const drawMap = () => {
       const mc = mapCanvas.current;
       if (!mc) return;
@@ -927,6 +946,19 @@ export function EverhomeWorldEngine({
       grad.addColorStop(1, "#51afd0");
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, w, h);
+      // Animated per-world atmosphere layer (canvas shader-style effects).
+      if(world.id==="forest"||world.id==="campfire"){
+        const glow=ctx.createRadialGradient(w*.52,h*.58,0,w*.52,h*.58,h*.7);glow.addColorStop(0,"rgba(255,191,93,.20)");glow.addColorStop(.45,"rgba(55,196,151,.08)");glow.addColorStop(1,"rgba(15,35,55,.16)");ctx.fillStyle=glow;ctx.fillRect(0,0,w,h);
+      }else if(world.id==="neon"||world.id==="arcade"){
+        ctx.globalAlpha=.12;for(let y=(t*.035)%42-42;y<h;y+=42){ctx.fillStyle=y%84<42?"#51efff":"#ff57cf";ctx.fillRect(0,y,w,2)}ctx.globalAlpha=1;
+        const neon=ctx.createRadialGradient(w*.72,h*.32,0,w*.72,h*.32,w*.65);neon.addColorStop(0,"rgba(255,55,210,.22)");neon.addColorStop(.45,"rgba(65,225,255,.08)");neon.addColorStop(1,"rgba(18,10,55,.22)");ctx.fillStyle=neon;ctx.fillRect(0,0,w,h);
+      }else if(world.id==="sky"){
+        ctx.globalAlpha=.7;for(let i=0;i<22;i++){const x=(i*173+t*.018)%(w+30),y=(i*97+t*.009)%h;ctx.fillStyle=i%3?"#fff":"#ffe785";ctx.beginPath();ctx.arc(x,y,1.5+Math.sin(t*.004+i),0,TAU);ctx.fill()}ctx.globalAlpha=1;
+      }else if(world.id==="cafe"){
+        const warm=ctx.createRadialGradient(w*.5,h*.28,0,w*.5,h*.28,w*.75);warm.addColorStop(0,"rgba(255,226,159,.22)");warm.addColorStop(1,"rgba(151,65,81,.12)");ctx.fillStyle=warm;ctx.fillRect(0,0,w,h);
+      }else if(world.id==="coast"||lake){
+        const sun=ctx.createRadialGradient(w*.78,h*.15,0,w*.78,h*.15,h*.55);sun.addColorStop(0,"rgba(255,245,184,.36)");sun.addColorStop(.35,"rgba(255,170,115,.09)");sun.addColorStop(1,"transparent");ctx.fillStyle=sun;ctx.fillRect(0,0,w,h);
+      }
       ctx.globalAlpha = 0.3;
       for (let i = 0; i < 7; i++) {
         ctx.fillStyle = "#fff";
@@ -1170,12 +1202,15 @@ export function EverhomeWorldEngine({
         while (headDelta < -Math.PI) headDelta += TAU;
         other.displayHead = (other.displayHead ?? other.head) + headDelta * 0.22;
         const q = iso(other.displayX, other.displayY);
+        drawCompanion(q.x - 34, q.y + 7, other.companion as Companion);
         avatarDraw(q.x, q.y, other.displayHead, (other.avatar as Avatar) || avatar);
         drawFishTag(ctx, q.x, q.y, other.name, "EXPLORER", "", "");
       }
       const p = iso(actor.current.x, actor.current.y),
         stepBob =
           actor.current.speed > 8 ? Math.abs(Math.sin(t * 0.011)) * 4 : 0;
+      const petP=iso(companionPos.current.x,companionPos.current.y);
+      drawCompanion(petP.x,petP.y+Math.sin(t*.004)*2,companion.current);
       avatarDraw(p.x, p.y - stepBob, actor.current.head);
       let title = "EXPLORER",
         badge = "";
@@ -1235,6 +1270,11 @@ export function EverhomeWorldEngine({
       a.speed = Math.hypot(a.vx, a.vy);
       a.x += a.vx * dt;
       a.y += a.vy * dt;
+      const petTargetX=a.x-Math.sin(a.head)*48-Math.cos(a.head)*30,
+        petTargetY=a.y+Math.cos(a.head)*48-Math.sin(a.head)*30,
+        petFollow=1-Math.exp(-5.5*dt);
+      companionPos.current.x+=(petTargetX-companionPos.current.x)*petFollow;
+      companionPos.current.y+=(petTargetY-companionPos.current.y)*petFollow;
       a.x = clamp(a.x, 35, WORLD_W - 35);
       a.y = clamp(a.y, 35, WORLD_H - 35);
       cam.current.x += (a.x - cam.current.x) * Math.min(1, dt * 5);

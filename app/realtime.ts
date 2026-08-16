@@ -1,6 +1,6 @@
 export type LiveChat={id:string;name:string;text:string;world:string;at:number};
 export type LiveDm={id:string;from:string;to:string;text:string;gift?:string;at:number};
-export type LivePresence={id:string;name:string;world:string;x:number;y:number;head:number;color:string;avatar?:unknown;at:number};
+export type LivePresence={id:string;name:string;world:string;x:number;y:number;head:number;color:string;avatar?:unknown;companion?:unknown;at:number};
 const ROOT="https://mantledb.sh/v2/everhome";
 async function read<T>(path:string,key:string):Promise<T[]>{try{const r=await fetch(`${ROOT}/${path}?t=${Date.now()}`,{cache:"no-store"});if(!r.ok)return[];const d=await r.json();return Array.isArray(d?.[key])?d[key]:[]}catch{return[]}}
 async function append<T extends {id:string;at:number}>(path:string,key:string,item:T,limit=120){const current=await read<T>(path,key),now=Date.now(),items=current.filter(x=>x?.id&&x.id!==item.id&&now-(x.at||0)<86400000).slice(-(limit-1));items.push(item);try{await fetch(`${ROOT}/${path}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({[key]:items,updated:now})})}catch{}}
