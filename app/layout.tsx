@@ -1,3 +1,3 @@
-import type {Metadata} from "next";import "./globals.css";import "./lake.css";import "./polish.css";import "./social.css";import "./notification.css";import "./mobile-fixes.css";import "./world-alignment.css";
+import type {Metadata} from "next";import {AutoUpdate} from "./auto-update";import "./globals.css";import "./lake.css";import "./polish.css";import "./social.css";import "./notification.css";import "./mobile-fixes.css";import "./world-alignment.css";import "./auto-update.css";
 export const metadata:Metadata={title:"EVERHOME — Imagine it. Make it real.",description:"Build worlds, make games, meet friends, and explore a universe made by everyone."};
-export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="en"><body>{children}</body></html>}
+export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="en"><body>{children}<AutoUpdate/></body></html>}

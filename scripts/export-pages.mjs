@@ -30,6 +30,13 @@ html = html
 await writeFile(resolve(output, "index.html"), html);
 await writeFile(resolve(output, "404.html"), html);
 await writeFile(resolve(output, ".nojekyll"), "");
+await writeFile(
+  resolve(output, "version.json"),
+  JSON.stringify({
+    version: process.env.GITHUB_SHA || `local-${Date.now()}`,
+    deployedAt: new Date().toISOString(),
+  }),
+);
 
 const generated = await readFile(resolve(output, "index.html"), "utf8");
 if (!generated.includes("EVERHOME") || !generated.includes(`${basePath}/_next/`)) {
