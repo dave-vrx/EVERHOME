@@ -404,7 +404,7 @@ function drawFishTag(
         ),
       ),
       ch = lines.length * 14 + 12,
-      cy = sy - 96;
+      cy = sy - 142;
     ctx.fillStyle = "rgba(6,20,34,.9)";
     ctx.beginPath();
     ctx.roundRect(sx - cw / 2, cy - ch, cw, ch, 9);
@@ -422,7 +422,7 @@ function drawFishTag(
   }
   ctx.font = "800 8px system-ui";
   const tw = Math.max(54, ctx.measureText(title).width + 18),
-    ty = sy - 91;
+    ty = sy - 122;
   ctx.fillStyle = "rgba(12,8,0,.9)";
   ctx.beginPath();
   ctx.roundRect(sx - tw / 2, ty, tw, 14, 7);
@@ -433,7 +433,7 @@ function drawFishTag(
   ctx.fillText(title, sx, ty + 7);
   ctx.font = "800 10.5px system-ui";
   const nw = Math.max(46, ctx.measureText(name.slice(0, 16)).width + 24),
-    ny = sy - 72;
+    ny = sy - 103;
   ctx.fillStyle = "rgba(6,20,34,.9)";
   ctx.beginPath();
   ctx.roundRect(sx - nw / 2, ny, nw, 22, 11);

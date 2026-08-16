@@ -186,6 +186,7 @@ const nav = [
   ["♙", "Friends"],
   ["💬", "Messages"],
   ["✦", "Avatar"],
+  ["🐾", "Pets"],
   ["⚒", "Create"],
   ["◇", "Shop"],
   ["⬡", "Badges"],
@@ -616,6 +617,7 @@ export default function EverhomeApp() {
       { x: number; y: number; item: string }[]
     >([]),
     [buildItem, setBuildItem] = useState("🌲");
+  const [sessionEarned,setSessionEarned]=useState(0);
   const [mobileMenu, setMobileMenu] = useState(false);
   useEffect(() => {
     const raw = localStorage.getItem("everhome-profile");
@@ -648,6 +650,7 @@ export default function EverhomeApp() {
       }),
     );
   }, [ready, username, coins, avatar, owned, visits, chatCount, built]);
+  useEffect(()=>{if(!ready||!username)return;const timer=setInterval(()=>{setCoins(c=>c+2);setSessionEarned(n=>n+2)},30000);return()=>clearInterval(timer)},[ready,username]);
   function notify(t: string) {
     setToast(t);
     setTimeout(() => setToast(""), 2600);
@@ -719,7 +722,7 @@ export default function EverhomeApp() {
     return (
       <main className="welcome">
         <div className="welcomeArt">
-          <b className="welcomeLogo">E</b>
+          <img className="welcomeBrand" src="everhome-logo.png" alt="EVERHOME"/>
           <div className="welcomeWorld">🔥</div>
           <AvatarFigure avatar={avatar} />
           <div className="welcomeBubble">A new world starts with a name.</div>
@@ -767,8 +770,7 @@ export default function EverhomeApp() {
     <main className="app">
       <aside className="sidebar">
         <button className="brand" onClick={() => setActive("Home")}>
-          <b>E</b>
-          <strong>EVERHOME</strong>
+          <img src="everhome-logo.png" alt="EVERHOME"/>
         </button>
         <nav>
           {nav.map(([i, n]) => (
@@ -802,6 +804,7 @@ export default function EverhomeApp() {
             />
           </label>
           <div className="headerTools">
+            <span className="idlePill" title="Earn 2 Homecoins every 30 seconds while playing">✦ +{sessionEarned} session</span>
             <button className="coins" onClick={() => setActive("Shop")}>
               ◇ <b>{coins.toLocaleString()}</b>
             </button>
@@ -869,6 +872,7 @@ export default function EverhomeApp() {
               onStart={() => setActive("Worlds")}
             />
           )}{" "}
+          {active === "Pets" && <PetHome notify={notify}/>} {" "}
           {active === "Create" && (
             <Builder
               items={builderItems}
@@ -931,6 +935,7 @@ export default function EverhomeApp() {
           {[
             ["◌", "Events"],
             ["♙", "Friends"],
+            ["🐾", "Pets"],
             ["⚒", "Create"],
             ["◇", "Shop"],
             ["⬡", "Badges"],
@@ -1265,6 +1270,14 @@ function LegacyAvatarEditor({
     </div>
   );
 }
+function PetHome({notify}:{notify:(s:string)=>void}){
+ const [pet,setPet]=useState(()=>{if(typeof window==="undefined")return{kind:"fox",name:"Nova",hunger:82,happy:76,energy:68};try{return JSON.parse(localStorage.getItem("everhome-pet")||"")||{kind:"fox",name:"Nova",hunger:82,happy:76,energy:68}}catch{return{kind:"fox",name:"Nova",hunger:82,happy:76,energy:68}}});
+ useEffect(()=>{localStorage.setItem("everhome-pet",JSON.stringify(pet))},[pet]);
+ const care=(key:"hunger"|"happy"|"energy",message:string)=>{setPet((p:any)=>({...p,[key]:Math.min(100,p[key]+18)}));notify(message)};
+ const pets=[['fox','🦊','Fox'],['cat','🐱','Cat'],['dog','🐶','Pup'],['dragon','🐲','Dragon'],['robot','🤖','Bot']];
+ return <><PageTitle over="COMPANION HOME" title="Your little forever friend" text="Care for a companion, raise your bond, and bring them into every world."/><div className="petHome"><section className="petStage"><div className="petRoom"><span className="petSprite">{pets.find(p=>p[0]===pet.kind)?.[1]||'🦊'}</span><i>♡</i></div><input aria-label="Pet name" value={pet.name} maxLength={12} onChange={e=>setPet({...pet,name:e.target.value})}/><b>Bond level {Math.floor((pet.hunger+pet.happy+pet.energy)/30)}</b></section><section className="petCare"><h2>Care & play</h2>{[['hunger','Full tummy',pet.hunger],['happy','Happiness',pet.happy],['energy','Energy',pet.energy]].map(([key,label,value])=><label key={String(key)}><span>{label}</span><b>{value}%</b><i><em style={{width:`${value}%`}}/></i></label>)}<div className="petActions"><button onClick={()=>care('hunger','Your companion loved the berry snack!')}>🍓 Feed</button><button onClick={()=>care('happy','You played together!')}>🧶 Play</button><button onClick={()=>care('energy','Your companion had a cozy nap.')}>🛏️ Nap</button></div><h3>Choose companion</h3><div className="petPicker">{pets.map(([id,icon,name])=><button className={pet.kind===id?'selected':''} key={id} onClick={()=>setPet({...pet,kind:id})}><i>{icon}</i><span>{name}</span></button>)}</div><div className="petQuest"><b>DAILY BOND QUEST</b><span>Visit two worlds together</span><em>0 / 2 · Reward ◇ 40</em></div></section></div></>
+}
+
 function Builder({
   items,
   setItems,
@@ -1279,6 +1292,7 @@ function Builder({
   save: () => void;
 }) {
   const tools = ["🌲", "🪨", "🔥", "⛺", "🪑", "🌼", "🏠", "💧"];
+  const [builderTab,setBuilderTab]=useState<"world"|"logic">("world"),[nodes,setNodes]=useState(["When player enters","Show message"]);
   return (
     <>
       <PageTitle
@@ -1288,6 +1302,7 @@ function Builder({
       />
       <div className="builder">
         <aside>
+          <div className="builderModes"><button className={builderTab==="world"?"active":""} onClick={()=>setBuilderTab("world")}>Build</button><button className={builderTab==="logic"?"active":""} onClick={()=>setBuilderTab("logic")}>Logic</button></div>
           <h3>Objects</h3>
           {tools.map((t) => (
             <button
@@ -1302,7 +1317,7 @@ function Builder({
           <button onClick={() => setItems(items.slice(0, -1))}>↶ Undo</button>
           <button onClick={() => setItems([])}>⌫ Clear</button>
         </aside>
-        <div
+        {builderTab==="world"?<div
           className="buildCanvas"
           onClick={(e) => {
             const r = e.currentTarget.getBoundingClientRect();
@@ -1325,7 +1340,7 @@ function Builder({
             🙂<small>Spawn</small>
           </div>
           <p>Tap anywhere to place {tool}</p>
-        </div>
+        </div>:<div className="logicCanvas"><header><b>EVERCODE</b><span>Visual scripting · safe & synced</span></header><div className="logicFlow">{nodes.map((n,i)=><button key={i} className={i===0?"eventNode":"actionNode"}><small>{i===0?"EVENT":"ACTION"}</small><b>{n}</b><i>●</i></button>)}<span className="logicWire"/></div><footer>{["Play sound","Give coins","Open door","Start timer"].map(n=><button key={n} onClick={()=>setNodes([...nodes,n])}>＋ {n}</button>)}<button onClick={()=>setNodes(nodes.slice(0,-1))}>↶ Undo node</button></footer></div>}
         <section>
           <label>
             WORLD NAME
