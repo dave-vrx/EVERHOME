@@ -1249,20 +1249,20 @@ export function EverhomeWorldEngine({
           (k.has("KeyW") || k.has("ArrowUp") ? 1 : 0) +
           j.y,
         rawMag = Math.hypot(ix, iy),
-        mag = Math.min(1, rawMag);
+        mag = Math.min(1, rawMag),
+        moveX = ix + iy,
+        moveY = iy - ix,
+        worldMag = Math.hypot(moveX, moveY);
       const a = actor.current;
       if (mag > 0.04) {
-        const target = Math.atan2(ix, -iy);
+        const target = Math.atan2(moveX, -moveY);
         let diff = target - a.head;
         while (diff > Math.PI) diff -= TAU;
         while (diff < -Math.PI) diff += TAU;
-        a.head += diff * Math.min(1, dt * 9);
-        const maxSpeed = lake ? 190 : 210,
-          desiredX = (ix / rawMag) * maxSpeed * mag,
-          desiredY = (iy / rawMag) * maxSpeed * mag,
-          response = 1 - Math.exp(-(lake ? 16 : 22) * dt);
-        a.vx += (desiredX - a.vx) * response;
-        a.vy += (desiredY - a.vy) * response;
+        a.head += diff * Math.min(1, dt * 15);
+        const maxSpeed = lake ? 205 : 235;
+        a.vx = (moveX / worldMag) * maxSpeed * mag;
+        a.vy = (moveY / worldMag) * maxSpeed * mag;
       } else {
         a.vx = 0;
         a.vy = 0;
@@ -1277,8 +1277,8 @@ export function EverhomeWorldEngine({
       companionPos.current.y+=(petTargetY-companionPos.current.y)*petFollow;
       a.x = clamp(a.x, 35, WORLD_W - 35);
       a.y = clamp(a.y, 35, WORLD_H - 35);
-      cam.current.x += (a.x - cam.current.x) * Math.min(1, dt * 5);
-      cam.current.y += (a.y - cam.current.y) * Math.min(1, dt * 5);
+      cam.current.x += (a.x - cam.current.x) * Math.min(1, dt * 9);
+      cam.current.y += (a.y - cam.current.y) * Math.min(1, dt * 9);
       const close =
         (WORLD_HOTSPOTS[world.id] || []).find(
           (h) => Math.hypot(a.x - h.x, a.y - h.y) < h.r,
