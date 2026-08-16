@@ -835,6 +835,9 @@ export default function EverhomeApp() {
               setPlaying={setPlaying}
               setActive={setActive}
               events={events}
+              avatar={avatar}
+              coins={coins}
+              reward={(amount)=>{setCoins(c=>c+amount);notify(`Daily reward: +${amount} Homecoins!`)}}
             />
           )}{" "}
           {active === "Worlds" && (
@@ -966,15 +969,24 @@ function Home({
   setPlaying,
   setActive,
   events,
+  avatar,
+  coins,
+  reward,
 }: {
   username: string;
   worlds: World[];
   setPlaying: (w: World) => void;
   setActive: (s: string) => void;
   events: typeof globalThis extends never ? never : any[];
+  avatar: Avatar;
+  coins: number;
+  reward:(amount:number)=>void;
 }) {
+  const today=new Date().toISOString().slice(0,10),[claimed,setClaimed]=useState(()=>typeof window!=="undefined"&&localStorage.getItem("everhome-daily")==today);
+  const claim=()=>{if(claimed)return;localStorage.setItem("everhome-daily",today);setClaimed(true);reward(75)};
   return (
     <>
+      <section className="v2Welcome"><div className="v2Greeting"><div className="v2Avatar"><AvatarFigure avatar={avatar}/></div><div><small>WELCOME BACK</small><h1>{username}</h1><p>Your worlds, friends and companion missed you.</p></div></div><div className="v2Wallet"><span>HOMECOINS</span><b>◇ {coins.toLocaleString()}</b><button onClick={()=>setActive("Shop")}>Visit shop</button></div></section>
       <section className="homeHero">
         <div>
           <small>WELCOME HOME, {username.toUpperCase()}</small>
@@ -995,6 +1007,8 @@ function Home({
           <span>“Meet us by the fire!”</span>
         </div>
       </section>
+      <nav className="quickDock" aria-label="Quick actions">{[["🌍","Explore","Worlds"],["🐾","Companion","Pets"],["✦","New look","Avatar"],["⚒️","Create","Create"],["💬","Messages","Messages"],["🎉","Events","Events"]].map(([icon,label,page])=><button key={page} onClick={()=>setActive(page)}><i>{icon}</i><span>{label}</span></button>)}</nav>
+      <section className="todayGrid"><article className="dailyCard"><div><small>DAILY WELCOME · DAY 1</small><h2>A little something for coming home</h2><p>Return each day to grow your streak and unlock companion treats, furniture and special colours.</p></div><button disabled={claimed} onClick={claim}>{claimed?"✓ Collected":"◇ 75 · Collect"}</button></article><article className="questCard"><header><small>TODAY&apos;S PATH</small><b>2 / 4 complete</b></header>{[["Visit a social world",true],["Care for your companion",true],["Send a friendly message",false],["Add something in Builder",false]].map(([q,done])=><p className={done?"done":""} key={String(q)}><i>{done?"✓":"○"}</i><span>{q}</span></p>)}<button onClick={()=>setActive("Badges")}>See all progress →</button></article></section>
       <section className="sectionHead">
         <div>
           <small>JUMP IN</small>
