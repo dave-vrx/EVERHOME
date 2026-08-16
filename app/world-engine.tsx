@@ -477,7 +477,7 @@ export function EverhomeWorldEngine({
 }) {
   const canvas = useRef<HTMLCanvasElement>(null),
     mapCanvas = useRef<HTMLCanvasElement>(null),
-    actor = useRef({ x: 650, y: 620, head: 0, speed: 0 }),
+    actor = useRef({ x: 650, y: 620, head: 0, speed: 0, vx: 0, vy: 0 }),
     cam = useRef({ x: 650, y: 620 }),
     keys = useRef(new Set<string>()),
     joy = useRef({ x: 0, y: 0 }),
@@ -523,7 +523,7 @@ export function EverhomeWorldEngine({
   }, [onVisit, world.id]);
   useEffect(() => {
     const spawn = lake ? { x: 650, y: 620 } : { x: 2000, y: 1350 };
-    actor.current = { ...spawn, head: 0, speed: 0 };
+    actor.current = { ...spawn, head: 0, speed: 0, vx: 0, vy: 0 };
     cam.current = { ...spawn };
     setNear(null);
     setActivity("");
@@ -629,8 +629,18 @@ export function EverhomeWorldEngine({
     localStorage.setItem("everhome-lake-catches", JSON.stringify(bag));
   }, [bag]);
   useEffect(() => {
+    const movementCodes = new Set(["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]);
+    const resetInput = () => {
+      keys.current.clear();
+      joy.current = { x: 0, y: 0 };
+      hold.current = false;
+      actor.current.vx = 0;
+      actor.current.vy = 0;
+      actor.current.speed = 0;
+    };
     const down = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement)?.matches("input,textarea")) return;
+      if (movementCodes.has(e.code)) e.preventDefault();
       keys.current.add(e.code);
       if (e.code === "Space") {
         e.preventDefault();
@@ -642,11 +652,17 @@ export function EverhomeWorldEngine({
       keys.current.delete(e.code);
       if (e.code === "Space") hold.current = false;
     };
+    const visibility = () => { if (document.hidden) resetInput(); };
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
+    window.addEventListener("blur", resetInput);
+    document.addEventListener("visibilitychange", visibility);
     return () => {
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
+      window.removeEventListener("blur", resetInput);
+      document.removeEventListener("visibilitychange", visibility);
+      resetInput();
     };
   }, [lake]);
   function cast() {
@@ -1185,7 +1201,8 @@ export function EverhomeWorldEngine({
           (k.has("KeyS") || k.has("ArrowDown") ? 1 : 0) -
           (k.has("KeyW") || k.has("ArrowUp") ? 1 : 0) +
           j.y,
-        mag = Math.min(1, Math.hypot(ix, iy));
+        rawMag = Math.hypot(ix, iy),
+        mag = Math.min(1, rawMag);
       const a = actor.current;
       if (mag > 0.04) {
         const target = Math.atan2(ix, -iy);
@@ -1193,10 +1210,21 @@ export function EverhomeWorldEngine({
         while (diff > Math.PI) diff -= TAU;
         while (diff < -Math.PI) diff += TAU;
         a.head += diff * Math.min(1, dt * 9);
-        a.speed = Math.min(lake ? 190 : 210, a.speed + (lake ? 125 : 420) * dt);
-      } else a.speed = Math.max(0, a.speed - (lake ? 165 : 540) * dt);
-      a.x += Math.sin(a.head) * a.speed * dt;
-      a.y -= Math.cos(a.head) * a.speed * dt;
+        const maxSpeed = lake ? 190 : 210,
+          desiredX = (ix / rawMag) * maxSpeed * mag,
+          desiredY = (iy / rawMag) * maxSpeed * mag,
+          response = 1 - Math.exp(-(lake ? 8 : 13) * dt);
+        a.vx += (desiredX - a.vx) * response;
+        a.vy += (desiredY - a.vy) * response;
+      } else {
+        const stop = Math.exp(-(lake ? 15 : 24) * dt);
+        a.vx *= stop;
+        a.vy *= stop;
+        if (Math.hypot(a.vx, a.vy) < 1) { a.vx = 0; a.vy = 0; }
+      }
+      a.speed = Math.hypot(a.vx, a.vy);
+      a.x += a.vx * dt;
+      a.y += a.vy * dt;
       a.x = clamp(a.x, 35, WORLD_W - 35);
       a.y = clamp(a.y, 35, WORLD_H - 35);
       cam.current.x += (a.x - cam.current.x) * Math.min(1, dt * 5);
