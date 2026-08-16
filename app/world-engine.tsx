@@ -32,6 +32,7 @@ type Avatar = {
   shoeStyle?: string;
   shoeColor?: string;
 };
+type SmoothedPresence = LivePresence & {displayX?:number;displayY?:number;displayHead?:number};
 type Catch = { name: string; icon: string; size: number; rare: string };
 type FishState = "idle" | "waiting" | "reeling" | "caught";
 type Hotspot = {
@@ -492,7 +493,7 @@ export function EverhomeWorldEngine({
     seenChat = useRef(new Set<string>()),
     chatChannel = useRef<BroadcastChannel | null>(null),
     presenceChannel = useRef<BroadcastChannel | null>(null),
-    remotePlayers = useRef<LivePresence[]>([]);
+    remotePlayers = useRef<SmoothedPresence[]>([]);
   const [chat, setChat] = useState(false),
     [message, setMessage] = useState(""),
     [bubble, setBubble] = useState(""),
@@ -587,7 +588,11 @@ export function EverhomeWorldEngine({
             (!byId.has(p.id) || byId.get(p.id)!.at < p.at)
           )
             byId.set(p.id, p);
-        const fresh = [...byId.values()];
+        const previous = new Map(remotePlayers.current.map((p) => [p.id, p]));
+        const fresh: SmoothedPresence[] = [...byId.values()].map((p) => {
+          const old = previous.get(p.id);
+          return {...p, displayX: old?.displayX ?? old?.x ?? p.x, displayY: old?.displayY ?? old?.y ?? p.y, displayHead: old?.displayHead ?? old?.head ?? p.head};
+        });
         remotePlayers.current = fresh;
         setOnlineCount(1 + fresh.length);
       };
@@ -608,6 +613,7 @@ export function EverhomeWorldEngine({
           y: Math.round(a.y),
           head: a.head,
           color: "#32d8ff",
+          avatar,
           at: Date.now(),
         };
       presenceChannel.current?.postMessage(me);
@@ -616,14 +622,14 @@ export function EverhomeWorldEngine({
       if (alive) accept(all);
     };
     sync();
-    const timer = setInterval(sync, 1200);
+    const timer = setInterval(sync, 500);
     return () => {
       alive = false;
       clearInterval(timer);
       presenceChannel.current?.close();
       remotePlayers.current = [];
     };
-  }, [username, world.id]);
+  }, [avatar, username, world.id]);
 
   useEffect(() => {
     localStorage.setItem("everhome-lake-catches", JSON.stringify(bag));
@@ -740,7 +746,7 @@ export function EverhomeWorldEngine({
       ctx.ellipse(x, y, rx, ry, 0, 0, TAU);
       ctx.fill();
     };
-    const avatarDraw = (x: number, y: number, head: number) => {
+    const avatarDraw = (x: number, y: number, head: number, look: Avatar = avatar) => {
       ctx.save();
       ctx.translate(x, y);
       ctx.fillStyle = "rgba(18,31,44,.22)";
@@ -764,16 +770,16 @@ export function EverhomeWorldEngine({
         ctx.arc(0, -23, 8, 0, TAU);
         ctx.fill();
       } else {
-        ctx.fillStyle = avatar.bottom;
+        ctx.fillStyle = look.bottom;
         ctx.beginPath();
-        if(avatar.bottomStyle==="skirt"){ctx.moveTo(-15,-20);ctx.lineTo(15,-20);ctx.lineTo(20,4);ctx.lineTo(-20,4);ctx.closePath()}else if(avatar.bottomStyle==="shorts"){ctx.roundRect(-13,-20,10,16,4);ctx.roundRect(3,-20,10,16,4)}else{const wide=avatar.bottomStyle==="wide"?12:9;ctx.roundRect(-wide-3,-20,wide,25,5);ctx.roundRect(3,-20,wide,25,5)}
+        if(look.bottomStyle==="skirt"){ctx.moveTo(-15,-20);ctx.lineTo(15,-20);ctx.lineTo(20,4);ctx.lineTo(-20,4);ctx.closePath()}else if(look.bottomStyle==="shorts"){ctx.roundRect(-13,-20,10,16,4);ctx.roundRect(3,-20,10,16,4)}else{const wide=look.bottomStyle==="wide"?12:9;ctx.roundRect(-wide-3,-20,wide,25,5);ctx.roundRect(3,-20,wide,25,5)}
         ctx.fill();
-        ctx.fillStyle = avatar.topItem === "witch_outfit" ? "#17111f" : avatar.top;
+        ctx.fillStyle = look.topItem === "witch_outfit" ? "#17111f" : look.top;
         ctx.beginPath();
-        ctx.roundRect(-17, -48, 34, 33, avatar.topStyle==="jacket"?5:avatar.topStyle==="hoodie"?15:10);
+        ctx.roundRect(-17, -48, 34, 33, look.topStyle==="jacket"?5:look.topStyle==="hoodie"?15:10);
         ctx.fill();
-        if(avatar.topStyle==="jacket"){ctx.strokeStyle="#fff9";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-47);ctx.lineTo(0,-17);ctx.stroke()}else if(avatar.topStyle==="hoodie"){ctx.strokeStyle="#fff";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(-3,-44);ctx.lineTo(-3,-34);ctx.moveTo(3,-44);ctx.lineTo(3,-34);ctx.stroke()}
-        ctx.fillStyle = avatar.skin;
+        if(look.topStyle==="jacket"){ctx.strokeStyle="#fff9";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-47);ctx.lineTo(0,-17);ctx.stroke()}else if(look.topStyle==="hoodie"){ctx.strokeStyle="#fff";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(-3,-44);ctx.lineTo(-3,-34);ctx.moveTo(3,-44);ctx.lineTo(3,-34);ctx.stroke()}
+        ctx.fillStyle = look.skin;
         ctx.beginPath();
         ctx.roundRect(-22, -43, 7, 24, 5);
         ctx.roundRect(15, -43, 7, 24, 5);
@@ -781,7 +787,7 @@ export function EverhomeWorldEngine({
         ctx.beginPath();
         ctx.arc(0, -64, 19, 0, TAU);
         ctx.fill();
-        ctx.fillStyle = avatar.hair;
+        ctx.fillStyle = look.hair;
         ctx.beginPath();
         ctx.arc(0, -68, 19, Math.PI, TAU);
         ctx.quadraticCurveTo(19, -54, 15, -50);
@@ -790,8 +796,8 @@ export function EverhomeWorldEngine({
         ctx.lineTo(-15, -50);
         ctx.quadraticCurveTo(-19, -55, -19, -68);
         ctx.fill();
-        if (avatar.hat === "witch_hat") {
-          ctx.fillStyle = avatar.hatColor || "#7d4bb5";
+        if (look.hat === "witch_hat") {
+          ctx.fillStyle = look.hatColor || "#7d4bb5";
           ctx.beginPath();
           ctx.moveTo(-24, -78);
           ctx.lineTo(3, -112);
@@ -818,7 +824,7 @@ export function EverhomeWorldEngine({
         ctx.ellipse(-11, -59, 4, 2, 0, 0, TAU);
         ctx.ellipse(11, -59, 4, 2, 0, 0, TAU);
         ctx.fill();
-        ctx.fillStyle=avatar.shoeColor||"#f4f7fb";ctx.beginPath();const boot=avatar.shoeStyle==="boots"?10:6;ctx.roundRect(-13,-2,11,boot,4);ctx.roundRect(2,-2,11,boot,4);ctx.fill();
+        ctx.fillStyle=look.shoeColor||"#f4f7fb";ctx.beginPath();const boot=look.shoeStyle==="boots"?10:6;ctx.roundRect(-13,-2,11,boot,4);ctx.roundRect(2,-2,11,boot,4);ctx.fill();
       }
       ctx.restore();
     };
@@ -1157,8 +1163,14 @@ export function EverhomeWorldEngine({
         }
       }
       for (const other of remotePlayers.current) {
-        const q = iso(other.x, other.y);
-        avatarDraw(q.x, q.y, other.head);
+        other.displayX = (other.displayX ?? other.x) + (other.x - (other.displayX ?? other.x)) * 0.18;
+        other.displayY = (other.displayY ?? other.y) + (other.y - (other.displayY ?? other.y)) * 0.18;
+        let headDelta = other.head - (other.displayHead ?? other.head);
+        while (headDelta > Math.PI) headDelta -= TAU;
+        while (headDelta < -Math.PI) headDelta += TAU;
+        other.displayHead = (other.displayHead ?? other.head) + headDelta * 0.22;
+        const q = iso(other.displayX, other.displayY);
+        avatarDraw(q.x, q.y, other.displayHead, (other.avatar as Avatar) || avatar);
         drawFishTag(ctx, q.x, q.y, other.name, "EXPLORER", "", "");
       }
       const p = iso(actor.current.x, actor.current.y),
@@ -1213,14 +1225,12 @@ export function EverhomeWorldEngine({
         const maxSpeed = lake ? 190 : 210,
           desiredX = (ix / rawMag) * maxSpeed * mag,
           desiredY = (iy / rawMag) * maxSpeed * mag,
-          response = 1 - Math.exp(-(lake ? 8 : 13) * dt);
+          response = 1 - Math.exp(-(lake ? 16 : 22) * dt);
         a.vx += (desiredX - a.vx) * response;
         a.vy += (desiredY - a.vy) * response;
       } else {
-        const stop = Math.exp(-(lake ? 15 : 24) * dt);
-        a.vx *= stop;
-        a.vy *= stop;
-        if (Math.hypot(a.vx, a.vy) < 1) { a.vx = 0; a.vy = 0; }
+        a.vx = 0;
+        a.vy = 0;
       }
       a.speed = Math.hypot(a.vx, a.vy);
       a.x += a.vx * dt;
